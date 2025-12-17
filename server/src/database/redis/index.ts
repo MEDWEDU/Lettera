@@ -8,7 +8,7 @@ export { getRedisConfig } from '../config/redis/redisConfig';
 export * from './redisUtils';
 
 import { connectRedis, setupGracefulShutdown } from '../config/redis/redisConnection';
-import type { Redis } from 'ioredis';
+import type Redis from 'ioredis';
 
 // Initialize Redis connection and setup graceful shutdown
 export const initializeRedis = async (): Promise<Redis | null> => {
