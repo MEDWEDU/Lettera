@@ -9,6 +9,7 @@ export {
   ISearchQuery,
 } from './models/SearchHistory';
 export { OnlineStatus, IOnlineStatus } from './models/OnlineStatus';
+export { MediaFile, IMediaFile } from './models/MediaFile';
 
 // Экспорт функций подключения к MongoDB
 export {
@@ -53,6 +54,9 @@ export {
 // Экспорт Redis модуля
 export { initializeRedis } from './redis';
 
+// Экспорт S3 сервиса
+export { s3Service } from './services/S3Service';
+
 // Импортируем модели для default экспорта
 import { User } from './models/User';
 import { Chat } from './models/Chat';
@@ -60,6 +64,7 @@ import { Message } from './models/Message';
 import { FeedbackRequest } from './models/FeedbackRequest';
 import { SearchHistory } from './models/SearchHistory';
 import { OnlineStatus } from './models/OnlineStatus';
+import { MediaFile } from './models/MediaFile';
 import {
   connectDB,
   disconnectDB,
@@ -95,6 +100,9 @@ import {
 } from './redis/redisUtils';
 import { initializeRedis } from './redis';
 
+// Импортируем S3 сервис
+import { s3Service } from './services/S3Service';
+
 export default {
   // Models
   User,
@@ -103,6 +111,7 @@ export default {
   FeedbackRequest,
   SearchHistory,
   OnlineStatus,
+  MediaFile,
 
   // MongoDB Connection functions
   connectDB,
@@ -137,4 +146,7 @@ export default {
 
   // Redis initialization
   initializeRedis,
+
+  // S3 service
+  s3Service,
 };

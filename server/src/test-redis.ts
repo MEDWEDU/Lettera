@@ -3,11 +3,10 @@
  * Tests all Redis utility functions and connection
  */
 
-import { 
-  connectRedis, 
+import {
   initializeRedis,
-  setEmailCode, 
-  getEmailCode, 
+  setEmailCode,
+  getEmailCode,
   deleteEmailCode,
   setRefreshToken,
   getRefreshToken,

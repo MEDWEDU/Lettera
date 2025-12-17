@@ -1,5 +1,4 @@
-import { Router } from 'express';
-import { Request, Response } from 'express';
+import { Router, Request, Response } from 'express';
 import {
   getConnectionState,
   getRedisConnectionState,
@@ -13,7 +12,7 @@ const router = Router();
  * @desc Health check endpoint
  * @access Public
  */
-router.get('/', async (req: Request, res: Response) => {
+router.get('/', async (_req: Request, res: Response) => {
   const dbState = getConnectionState();
   const redisState = getRedisConnectionState();
   const redisHealthy = await isRedisHealthy().catch(() => false);
@@ -45,7 +44,7 @@ router.get('/', async (req: Request, res: Response) => {
  * @desc Database health check endpoint
  * @access Public
  */
-router.get('/db', (req: Request, res: Response) => {
+router.get('/db', (_req: Request, res: Response) => {
   const dbState = getConnectionState();
 
   const isConnected = dbState.readyState === 1;
@@ -75,7 +74,7 @@ router.get('/db', (req: Request, res: Response) => {
  * @desc Redis health check endpoint
  * @access Public
  */
-router.get('/redis', async (req: Request, res: Response) => {
+router.get('/redis', async (_req: Request, res: Response) => {
   const redisState = getRedisConnectionState();
   const redisHealthy = await isRedisHealthy().catch(() => false);
 
