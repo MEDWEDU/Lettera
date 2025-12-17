@@ -1,6 +1,10 @@
 import { Router } from 'express';
 import { Request, Response } from 'express';
-import { getConnectionState } from '../database';
+import {
+  getConnectionState,
+  getRedisConnectionState,
+  isRedisHealthy,
+} from '../database';
 
 const router = Router();
 
@@ -9,8 +13,10 @@ const router = Router();
  * @desc Health check endpoint
  * @access Public
  */
-router.get('/', (req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
   const dbState = getConnectionState();
+  const redisState = getRedisConnectionState();
+  const redisHealthy = await isRedisHealthy().catch(() => false);
 
   res.json({
     status: 'OK',
@@ -24,6 +30,12 @@ router.get('/', (req: Request, res: Response) => {
       port: dbState.port,
       name: dbState.name,
       readyState: dbState.readyState,
+    },
+    redis: {
+      connected: redisHealthy,
+      status: redisState.status,
+      host: redisState.host,
+      port: redisState.port,
     },
   });
 });
@@ -54,6 +66,27 @@ router.get('/db', (req: Request, res: Response) => {
       port: dbState.port,
       name: dbState.name,
       timestamp: new Date().toISOString(),
+    },
+  });
+});
+
+/**
+ * @route GET /api/health/redis
+ * @desc Redis health check endpoint
+ * @access Public
+ */
+router.get('/redis', async (req: Request, res: Response) => {
+  const redisState = getRedisConnectionState();
+  const redisHealthy = await isRedisHealthy().catch(() => false);
+
+  res.status(redisHealthy ? 200 : 503).json({
+    redis: {
+      connected: redisHealthy,
+      status: redisState.status,
+      host: redisState.host,
+      port: redisState.port,
+      timestamp: new Date().toISOString(),
+      fallback: !redisHealthy && redisState.status !== 'connected',
     },
   });
 });

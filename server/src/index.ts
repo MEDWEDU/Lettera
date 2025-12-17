@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
-import { connectDB, createIndexes } from './database';
+import { connectDB, createIndexes, initializeRedis, setupRedisGracefulShutdown } from './database';
 
 // Load environment variables
 dotenv.config();
@@ -47,26 +47,36 @@ app.use('*', (req, res) => {
 // Initialize database connection and start server
 const startServer = async () => {
   try {
+    console.log('🚀 Starting Lettera Server...');
+    
     // Подключаемся к базе данных
+    console.log('\n=== DATABASE CONNECTION ===');
     await connectDB();
     
     // Создаем индексы
     await createIndexes();
     
+    // Подключаемся к Redis (не блокирует, если Redis недоступен)
+    console.log('\n=== REDIS CONNECTION ===');
+    await initializeRedis();
+    setupRedisGracefulShutdown();
+    
     // Запускаем HTTP сервер
     const server = app.listen(PORT, () => {
-      console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`\n✅ Server is running on port ${PORT}`);
       console.log(`📖 API documentation available at http://localhost:${PORT}`);
       console.log(`🏥 Health check available at http://localhost:${PORT}/api/health`);
       console.log(`🗄️  Database health check: http://localhost:${PORT}/api/health/db`);
+      console.log(`📡 Redis health check: http://localhost:${PORT}/api/health/redis`);
     });
 
     // Graceful shutdown
     const gracefulShutdown = async (signal: string) => {
       console.log(`\n🛑 Received ${signal}. Graceful shutdown starting...`);
       
-      server.close(() => {
+      server.close(async () => {
         console.log('🔌 HTTP server closed');
+        console.log('👋 Goodbye!');
         process.exit(0);
       });
     };
