@@ -4,6 +4,7 @@ import { Message } from '../models/Message';
 import { FeedbackRequest } from '../models/FeedbackRequest';
 import { SearchHistory } from '../models/SearchHistory';
 import { OnlineStatus } from '../models/OnlineStatus';
+import { MediaFile } from '../models/MediaFile';
 
 /**
  * Функция для создания всех необходимых индексов в базе данных
@@ -48,6 +49,12 @@ export const createIndexes = async (): Promise<void> => {
     
     const onlineStatusIndexes = await OnlineStatus.syncIndexes();
     console.log(`✅ OnlineStatus indexes synced: ${Object.keys(onlineStatusIndexes).length} indexes`);
+
+    // Создаем индексы для коллекции mediaFiles
+    console.log('📎 Creating indexes for mediaFiles collection...');
+    
+    const mediaFileIndexes = await MediaFile.syncIndexes();
+    console.log(`✅ MediaFile indexes synced: ${Object.keys(mediaFileIndexes).length} indexes`);
 
     // Создаем дополнительные специфические индексы
     await createAdditionalIndexes();
@@ -151,7 +158,8 @@ export const dropAllIndexes = async (): Promise<void> => {
       Message.collection,
       FeedbackRequest.collection,
       SearchHistory.collection,
-      OnlineStatus.collection
+      OnlineStatus.collection,
+      MediaFile.collection
     ];
 
     for (const collection of collections) {
@@ -185,7 +193,8 @@ export const getIndexesStats = async (): Promise<Record<string, any>> => {
       { name: 'messages', model: Message },
       { name: 'feedbackRequests', model: FeedbackRequest },
       { name: 'searchHistory', model: SearchHistory },
-      { name: 'onlineStatus', model: OnlineStatus }
+      { name: 'onlineStatus', model: OnlineStatus },
+      { name: 'mediaFiles', model: MediaFile }
     ];
 
     for (const { name, model } of collections) {

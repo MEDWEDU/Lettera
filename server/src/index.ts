@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
+import mediaRouter from './routes/media';
 import { connectDB, createIndexes } from './database';
 
 // Load environment variables
@@ -17,6 +18,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Routes
 app.use('/api/health', healthRouter);
+app.use('/api/media', mediaRouter);
 
 // Root route
 app.get('/', (req, res) => {

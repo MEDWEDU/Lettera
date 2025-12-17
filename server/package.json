@@ -16,14 +16,18 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.716.0",
+    "@aws-sdk/s3-request-presigner": "^3.716.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^4.17.25",
     "@types/mongoose": "^5.11.96",
+    "@types/multer": "^1.4.11",
     "@types/node": "^20.19.27",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^4.22.1",
     "mongoose": "^8.9.5",
+    "multer": "^1.4.5-lts.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   },
