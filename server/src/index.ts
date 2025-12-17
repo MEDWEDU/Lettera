@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
+import { connectDB, createIndexes } from './database';
 
 // Load environment variables
 dotenv.config();
@@ -27,7 +28,7 @@ app.get('/', (req, res) => {
 });
 
 // Global error handler
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, req: express.Request, res: express.Response) => {
   console.error('Error:', err.message);
   res.status(500).json({
     error: 'Internal Server Error',
@@ -43,11 +44,43 @@ app.use('*', (req, res) => {
   });
 });
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running on port ${PORT}`);
-  console.log(`📖 API documentation available at http://localhost:${PORT}`);
-  console.log(`🏥 Health check available at http://localhost:${PORT}/api/health`);
-});
+// Initialize database connection and start server
+const startServer = async () => {
+  try {
+    // Подключаемся к базе данных
+    await connectDB();
+    
+    // Создаем индексы
+    await createIndexes();
+    
+    // Запускаем HTTP сервер
+    const server = app.listen(PORT, () => {
+      console.log(`🚀 Server is running on port ${PORT}`);
+      console.log(`📖 API documentation available at http://localhost:${PORT}`);
+      console.log(`🏥 Health check available at http://localhost:${PORT}/api/health`);
+      console.log(`🗄️  Database health check: http://localhost:${PORT}/api/health/db`);
+    });
+
+    // Graceful shutdown
+    const gracefulShutdown = async (signal: string) => {
+      console.log(`\n🛑 Received ${signal}. Graceful shutdown starting...`);
+      
+      server.close(() => {
+        console.log('🔌 HTTP server closed');
+        process.exit(0);
+      });
+    };
+
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+// Start the server
+startServer();
 
 export default app;
