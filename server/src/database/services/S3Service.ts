@@ -31,9 +31,9 @@ export interface UploadResult {
 }
 
 class S3Service {
-  private s3Client: S3Client;
-  private bucket: string;
-  private isMinIO: boolean;
+  public s3Client: S3Client;
+  public bucket: string;
+  public isMinIO: boolean;
 
   constructor() {
     this.bucket = process.env.S3_BUCKET || 'lettera-media';
@@ -60,7 +60,7 @@ class S3Service {
   /**
    * Валидирует MIME-тип файла
    */
-  private validateMimeType(mimeType: string): FileType | null {
+  public validateMimeType(mimeType: string): FileType | null {
     for (const [type, allowedTypes] of Object.entries(ALLOWED_MIME_TYPES)) {
       for (const allowedType of allowedTypes as readonly string[]) {
         if (allowedType === mimeType) {
@@ -74,14 +74,14 @@ class S3Service {
   /**
    * Валидирует размер файла
    */
-  private validateFileSize(size: number, type: FileType): boolean {
+  public validateFileSize(size: number, type: FileType): boolean {
     return size <= FILE_SIZE_LIMITS[type];
   }
 
   /**
    * Генерирует уникальное имя файла
    */
-  private generateFileName(userId: string, mimeType: string, originalName?: string): string {
+  public generateFileName(userId: string, mimeType: string, originalName?: string): string {
     const timestamp = Date.now();
     const randomHash = Math.random().toString(36).substring(2, 15);
     const extension = mimeType.split('/')[1];
