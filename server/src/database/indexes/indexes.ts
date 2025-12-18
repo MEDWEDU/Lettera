@@ -5,6 +5,7 @@ import { FeedbackRequest } from '../models/FeedbackRequest';
 import { SearchHistory } from '../models/SearchHistory';
 import { OnlineStatus } from '../models/OnlineStatus';
 import { MediaFile } from '../models/MediaFile';
+import logger from '../../utils/logger';
 
 /**
  * Функция для создания всех необходимых индексов в базе данных
@@ -12,57 +13,42 @@ import { MediaFile } from '../models/MediaFile';
  */
 export const createIndexes = async (): Promise<void> => {
   try {
-    console.log('🔍 Starting to create database indexes...');
+    logger.info('🔍 Starting to create database indexes...');
 
-    // Создаем индексы для коллекции users
-    console.log('📊 Creating indexes for users collection...');
-    
+    logger.info('📊 Creating indexes for users collection...');
     const userIndexes = await User.syncIndexes();
-    console.log(`✅ Users indexes synced: ${Object.keys(userIndexes).length} indexes`);
+    logger.info(`✅ Users indexes synced: ${Object.keys(userIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции chats
-    console.log('💬 Creating indexes for chats collection...');
-    
+    logger.info('💬 Creating indexes for chats collection...');
     const chatIndexes = await Chat.syncIndexes();
-    console.log(`✅ Chats indexes synced: ${Object.keys(chatIndexes).length} indexes`);
+    logger.info(`✅ Chats indexes synced: ${Object.keys(chatIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции messages
-    console.log('📝 Creating indexes for messages collection...');
-    
+    logger.info('📝 Creating indexes for messages collection...');
     const messageIndexes = await Message.syncIndexes();
-    console.log(`✅ Messages indexes synced: ${Object.keys(messageIndexes).length} indexes`);
+    logger.info(`✅ Messages indexes synced: ${Object.keys(messageIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции feedbackRequests
-    console.log('📋 Creating indexes for feedbackRequests collection...');
-    
+    logger.info('📋 Creating indexes for feedbackRequests collection...');
     const feedbackRequestIndexes = await FeedbackRequest.syncIndexes();
-    console.log(`✅ FeedbackRequests indexes synced: ${Object.keys(feedbackRequestIndexes).length} indexes`);
+    logger.info(`✅ FeedbackRequests indexes synced: ${Object.keys(feedbackRequestIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции searchHistory
-    console.log('🔍 Creating indexes for searchHistory collection...');
-    
+    logger.info('🔍 Creating indexes for searchHistory collection...');
     const searchHistoryIndexes = await SearchHistory.syncIndexes();
-    console.log(`✅ SearchHistory indexes synced: ${Object.keys(searchHistoryIndexes).length} indexes`);
+    logger.info(`✅ SearchHistory indexes synced: ${Object.keys(searchHistoryIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции onlineStatus
-    console.log('🟢 Creating indexes for onlineStatus collection...');
-    
+    logger.info('🟢 Creating indexes for onlineStatus collection...');
     const onlineStatusIndexes = await OnlineStatus.syncIndexes();
-    console.log(`✅ OnlineStatus indexes synced: ${Object.keys(onlineStatusIndexes).length} indexes`);
+    logger.info(`✅ OnlineStatus indexes synced: ${Object.keys(onlineStatusIndexes).length} indexes`);
 
-    // Создаем индексы для коллекции mediaFiles
-    console.log('📎 Creating indexes for mediaFiles collection...');
-    
+    logger.info('📎 Creating indexes for mediaFiles collection...');
     const mediaFileIndexes = await MediaFile.syncIndexes();
-    console.log(`✅ MediaFile indexes synced: ${Object.keys(mediaFileIndexes).length} indexes`);
+    logger.info(`✅ MediaFile indexes synced: ${Object.keys(mediaFileIndexes).length} indexes`);
 
-    // Создаем дополнительные специфические индексы
     await createAdditionalIndexes();
 
-    console.log('🎉 All database indexes created successfully!');
+    logger.info('🎉 All database indexes created successfully!');
 
   } catch (error: unknown) {
-    console.error('❌ Error creating indexes:', error);
+    logger.error('❌ Error creating indexes:', error);
     throw error;
   }
 };
@@ -72,44 +58,38 @@ export const createIndexes = async (): Promise<void> => {
  */
 const createAdditionalIndexes = async (): Promise<void> => {
   try {
-    console.log('⚙️  Creating additional custom indexes...');
+    logger.info('⚙️  Creating additional custom indexes...');
 
-    // Дополнительный индекс для быстрого поиска пользователей по категории и статусу
     await User.collection.createIndex(
       { 'profile.category': 1, status: 1, lastSeen: -1 },
       { name: 'user_category_status_lastseen' }
     );
-    console.log('  ✅ User category+status+lastSeen index created');
+    logger.info('  ✅ User category+status+lastSeen index created');
 
-    // Дополнительный индекс для поиска по навыкам
     await User.collection.createIndex(
       { 'profile.skills': 1 },
       { name: 'user_skills_single' }
     );
-    console.log('  ✅ User skills single index created');
+    logger.info('  ✅ User skills single index created');
 
-    // Дополнительный составной индекс для сообщений
     await Message.collection.createIndex(
       { chatId: 1, senderId: 1, timestamp: -1 },
       { name: 'message_chat_sender_timestamp' }
     );
-    console.log('  ✅ Message chat+sender+timestamp index created');
+    logger.info('  ✅ Message chat+sender+timestamp index created');
 
-    // Дополнительный индекс для быстрого поиска активных feedback запросов
     await FeedbackRequest.collection.createIndex(
       { status: 1, requestedAt: 1 },
       { name: 'feedback_request_status_requestedAt' }
     );
-    console.log('  ✅ Feedback request status+requestedAt index created');
+    logger.info('  ✅ Feedback request status+requestedAt index created');
 
-    // Дополнительный индекс для аналитики поисков
     await SearchHistory.collection.createIndex(
       { 'query.category': 1, timestamp: -1 },
       { name: 'search_history_category_timestamp' }
     );
-    console.log('  ✅ Search history category+timestamp index created');
+    logger.info('  ✅ Search history category+timestamp index created');
 
-    // Проверяем и создаем text index для поиска пользователей (если еще не создан)
     try {
       await User.collection.createIndex(
         {
@@ -129,18 +109,17 @@ const createAdditionalIndexes = async (): Promise<void> => {
           default_language: 'russian'
         }
       );
-      console.log('  ✅ User text search index created');
+      logger.info('  ✅ User text search index created');
     } catch (error: unknown) {
-      // Если индекс уже существует, это не ошибка
       if (error instanceof Error && 'code' in error && error.code === 85) {
-        console.log('  ℹ️  User text search index already exists');
+        logger.info('  ℹ️  User text search index already exists');
       } else {
         throw error;
       }
     }
 
   } catch (error) {
-    console.error('❌ Error creating additional indexes:', error);
+    logger.error('❌ Error creating additional indexes:', error);
     throw error;
   }
 };
@@ -150,7 +129,7 @@ const createAdditionalIndexes = async (): Promise<void> => {
  */
 export const dropAllIndexes = async (): Promise<void> => {
   try {
-    console.log('🗑️  Dropping all database indexes...');
+    logger.info('🗑️  Dropping all database indexes...');
 
     const collections = [
       User.collection,
@@ -164,17 +143,16 @@ export const dropAllIndexes = async (): Promise<void> => {
 
     for (const collection of collections) {
       await collection.dropIndexes();
-      console.log(`  ✅ Dropped all indexes for ${collection.collectionName}`);
+      logger.info(`  ✅ Dropped all indexes for ${collection.collectionName}`);
     }
 
-    console.log('🎉 All indexes dropped successfully!');
+    logger.info('🎉 All indexes dropped successfully!');
 
   } catch (error: unknown) {
-    // Игнорируем ошибку если коллекция не существует
     if (error instanceof Error && 'code' in error && error.code === 26) {
-      console.log('ℹ️  Some collections do not exist yet, skipping...');
+      logger.info('ℹ️  Some collections do not exist yet, skipping...');
     } else {
-      console.error('❌ Error dropping indexes:', error);
+      logger.error('❌ Error dropping indexes:', error);
       throw error;
     }
   }
@@ -214,7 +192,7 @@ export const getIndexesStats = async (): Promise<Record<string, any>> => {
     return stats;
 
   } catch (error) {
-    console.error('❌ Error getting indexes stats:', error);
+    logger.error('❌ Error getting indexes stats:', error);
     throw error;
   }
 };

@@ -100,9 +100,6 @@ import {
 } from './redis/redisUtils';
 import { initializeRedis } from './redis';
 
-// Импортируем S3 сервис
-import { s3Service } from './services/S3Service';
-
 export default {
   // Models
   User,
@@ -146,7 +143,4 @@ export default {
 
   // Redis initialization
   initializeRedis,
-
-  // S3 service
-  s3Service,
 };
