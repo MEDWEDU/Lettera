@@ -9,12 +9,18 @@ import {
   initializeRedis,
   setupRedisGracefulShutdown,
 } from './database';
+import { requestLogger } from './middleware/requestLogger';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import logger from './utils/logger';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Request logging middleware
+app.use(requestLogger);
 
 // Middleware
 app.use(cors());
@@ -34,70 +40,52 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Global error handler
-app.use(
-  (
-    err: Error,
-    _req: express.Request,
-    res: express.Response,
-    _next: express.NextFunction
-  ) => {
-    console.error('Error:', err.message);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      message: err.message,
-    });
-  }
-);
+// 404 handler (must be before error handler)
+app.use('*', notFoundHandler);
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: `Route ${req.originalUrl} not found`,
-  });
-});
+// Global error handler (must be last)
+app.use(errorHandler);
 
 // Initialize database connection and start server
 const startServer = async () => {
   try {
-    console.log('🚀 Starting Lettera Server...');
+    logger.info('🚀 Starting Lettera Server...');
 
     // Подключаемся к базе данных
-    console.log('\n=== DATABASE CONNECTION ===');
+    logger.info('=== DATABASE CONNECTION ===');
     await connectDB();
 
     // Создаем индексы
     await createIndexes();
 
     // Подключаемся к Redis (не блокирует, если Redis недоступен)
-    console.log('\n=== REDIS CONNECTION ===');
+    logger.info('=== REDIS CONNECTION ===');
     await initializeRedis();
     setupRedisGracefulShutdown();
 
     // Запускаем HTTP сервер
     const server = app.listen(PORT, () => {
-      console.log(`\n✅ Server is running on port ${PORT}`);
-      console.log(`📖 API documentation available at http://localhost:${PORT}`);
-      console.log(
+      logger.info(`✅ Server is running on port ${PORT}`);
+      logger.info(`📖 API documentation available at http://localhost:${PORT}`);
+      logger.info(
         `🏥 Health check available at http://localhost:${PORT}/api/health`
       );
-      console.log(
+      logger.info(
         `🗄️  Database health check: http://localhost:${PORT}/api/health/db`
       );
-      console.log(
+      logger.info(
         `📡 Redis health check: http://localhost:${PORT}/api/health/redis`
       );
-      console.log(`📎 Media uploads: http://localhost:${PORT}/api/media`);
+      logger.info(`📎 Media uploads: http://localhost:${PORT}/api/media`);
     });
 
     // Graceful shutdown
     const gracefulShutdown = (signal: string) => {
-      console.log(`\n🛑 Received ${signal}. Graceful shutdown starting...`);
+      logger.info(`🛑 Received ${signal}. Graceful shutdown starting...`);
 
       server.close(() => {
-        console.log('🔌 HTTP server closed');
-        console.log('👋 Goodbye!');
+        logger.info('🔌 HTTP server closed');
+        logger.info('👋 Goodbye!');
         process.exit(0);
       });
     };
@@ -105,7 +93,7 @@ const startServer = async () => {
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };

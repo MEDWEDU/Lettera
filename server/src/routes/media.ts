@@ -3,6 +3,8 @@ import multer from 'multer';
 import { s3Service, ALLOWED_MIME_TYPES } from '../database/services/S3Service';
 import { MediaFile } from '../database/models/MediaFile';
 import { Types } from 'mongoose';
+import { asyncHandler } from '../utils';
+import HttpError from '../utils/HttpError';
 
 const router = express.Router();
 
@@ -28,26 +30,19 @@ const upload = multer({
  * @desc Загрузка медиафайла
  * @access Private
  */
-router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
-  try {
-    // Проверяем наличие файла
+router.post(
+  '/upload',
+  upload.single('file'),
+  asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'Файл не был загружен'
-      });
+      throw new HttpError(400, 'Файл не был загружен', 'FILE_MISSING');
     }
 
-    // Получаем userId из запроса (в реальном приложении из токена)
     const userId = req.body.userId;
     if (!userId || !Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Некорректный ID пользователя'
-      });
+      throw new HttpError(400, 'Некорректный ID пользователя', 'INVALID_USER_ID');
     }
 
-    // Загружаем файл через S3 сервис
     const result = await s3Service.uploadFile(
       req.file.buffer,
       req.file.mimetype,
@@ -63,196 +58,128 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
         type: result.type,
         size: result.size,
         mimeType: result.mimeType,
-        uploadedAt: result.uploadedAt
-      }
+        uploadedAt: result.uploadedAt,
+      },
     });
-
-  } catch (error) {
-    console.error('Ошибка при загрузке файла:', error);
-    
-    // Определяем тип ошибки и возвращаем соответствующий ответ
-    let statusCode = 500;
-    let errorMessage = 'Ошибка при загрузке файла';
-
-    if (error instanceof Error) {
-      if (error.message.includes('Неподдерживаемый MIME-тип')) {
-        statusCode = 400;
-        errorMessage = error.message;
-      } else if (error.message.includes('Размер файла превышает лимит')) {
-        statusCode = 413; // Payload Too Large
-        errorMessage = error.message;
-      } else if (error.message.includes('Некорректный URL файла')) {
-        statusCode = 400;
-        errorMessage = error.message;
-      }
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      error: errorMessage
-    });
-  }
-});
+  })
+);
 
 /**
  * @route DELETE /api/media/:url
  * @desc Удаление медиафайла
  * @access Private
  */
-router.delete('/:url(*)', async (req: Request, res: Response) => {
-  try {
+router.delete(
+  '/:url(*)',
+  asyncHandler(async (req: Request, res: Response) => {
     const fileUrl = decodeURIComponent(req.params.url);
-    const userId = req.body.userId; // В реальном приложении из токена
+    const userId = req.body.userId;
 
-    // Проверяем, существует ли файл и принадлежит ли он пользователю
     if (userId && Types.ObjectId.isValid(userId)) {
       const mediaFile = await MediaFile.findOne({
         url: fileUrl,
-        uploadedBy: new Types.ObjectId(userId)
+        uploadedBy: new Types.ObjectId(userId),
       });
 
       if (!mediaFile) {
-        return res.status(404).json({
-          success: false,
-          error: 'Файл не найден или у вас нет прав для его удаления'
-        });
+        throw new HttpError(
+          404,
+          'Файл не найден или у вас нет прав для его удаления',
+          'FILE_NOT_FOUND_OR_FORBIDDEN'
+        );
       }
     }
 
-    // Удаляем файл
     await s3Service.deleteFile(fileUrl, userId);
 
     res.json({
       success: true,
-      message: 'Файл успешно удален'
+      message: 'Файл успешно удален',
     });
-
-  } catch (error) {
-    console.error('Ошибка при удалении файла:', error);
-    
-    let statusCode = 500;
-    let errorMessage = 'Ошибка при удалении файла';
-
-    if (error instanceof Error) {
-      if (error.message.includes('Некорректный URL файла')) {
-        statusCode = 400;
-        errorMessage = error.message;
-      }
-    }
-
-    res.status(statusCode).json({
-      success: false,
-      error: errorMessage
-    });
-  }
-});
+  })
+);
 
 /**
  * @route GET /api/media/presigned/:key
  * @desc Получение временного URL для скачивания файла
  * @access Private
  */
-router.get('/presigned/:key(*)', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/presigned/:key(*)',
+  asyncHandler(async (req: Request, res: Response) => {
     const key = req.params.key;
-    const expiresIn = parseInt(req.query.expiresIn as string) || 3600; // 1 час по умолчанию
+    const expiresIn = parseInt(req.query.expiresIn as string) || 3600;
 
-    // Проверяем существование файла
     const exists = await s3Service.fileExists(key);
     if (!exists) {
-      return res.status(404).json({
-        success: false,
-        error: 'Файл не найден'
-      });
+      throw new HttpError(404, 'Файл не найден', 'FILE_NOT_FOUND');
     }
 
-    // Генерируем временный URL
     const presignedUrl = await s3Service.generatePresignedUrl(key, expiresIn);
 
     res.json({
       success: true,
       data: {
         url: presignedUrl,
-        expiresIn
-      }
+        expiresIn,
+      },
     });
-
-  } catch (error) {
-    console.error('Ошибка при генерации временного URL:', error);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при генерации временного URL'
-    });
-  }
-});
+  })
+);
 
 /**
  * @route GET /api/media/user/:userId/stats
  * @desc Получение статистики файлов пользователя
  * @access Private
  */
-router.get('/user/:userId/stats', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/user/:userId/stats',
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Некорректный ID пользователя'
-      });
+      throw new HttpError(400, 'Некорректный ID пользователя', 'INVALID_USER_ID');
     }
 
     const stats = await s3Service.getUserFileStats(userId);
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
-
-  } catch (error) {
-    console.error('Ошибка при получении статистики файлов:', error);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при получении статистики файлов'
-    });
-  }
-});
+  })
+);
 
 /**
  * @route GET /api/media/user/:userId/files
  * @desc Получение списка файлов пользователя с пагинацией
  * @access Private
  */
-router.get('/user/:userId/files', async (req: Request, res: Response) => {
-  try {
+router.get(
+  '/user/:userId/files',
+  asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
     const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100); // Максимум 100 файлов за раз
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
     const type = req.query.type as 'image' | 'audio' | 'video' | undefined;
 
     if (!Types.ObjectId.isValid(userId)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Некорректный ID пользователя'
-      });
+      throw new HttpError(400, 'Некорректный ID пользователя', 'INVALID_USER_ID');
     }
 
-    // Формируем запрос
-    const query: { uploadedBy: Types.ObjectId; type?: string } = { uploadedBy: new Types.ObjectId(userId) };
+    const query: { uploadedBy: Types.ObjectId; type?: string } = {
+      uploadedBy: new Types.ObjectId(userId),
+    };
     if (type) {
       query.type = type;
     }
 
-    // Получаем файлы с пагинацией
     const files = await MediaFile.find(query)
       .sort({ uploadedAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit)
       .select('-__v');
 
-    // Получаем общее количество
     const total = await MediaFile.countDocuments(query);
 
     res.json({
@@ -263,50 +190,11 @@ router.get('/user/:userId/files', async (req: Request, res: Response) => {
           page,
           limit,
           total,
-          pages: Math.ceil(total / limit)
-        }
-      }
+          pages: Math.ceil(total / limit),
+        },
+      },
     });
-
-  } catch (error) {
-    console.error('Ошибка при получении списка файлов:', error);
-    
-    res.status(500).json({
-      success: false,
-      error: 'Ошибка при получении списка файлов'
-    });
-  }
-});
-
-// Middleware для обработки ошибок multer
-router.use((error: Error, req: Request, res: Response) => {
-  if (error instanceof multer.MulterError) {
-    if (error.code === 'LIMIT_FILE_SIZE') {
-      return res.status(413).json({
-        success: false,
-        error: 'Размер файла слишком большой'
-      });
-    }
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(400).json({
-        success: false,
-        error: 'Слишком много файлов'
-      });
-    }
-  }
-
-  if (error.message.includes('Неподдерживаемый тип файла')) {
-    return res.status(400).json({
-      success: false,
-      error: error.message
-    });
-  }
-
-  console.error('Ошибка в media routes:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Внутренняя ошибка сервера'
-  });
-});
+  })
+);
 
 export default router;
