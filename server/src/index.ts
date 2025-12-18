@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import healthRouter from './routes/health';
 import mediaRouter from './routes/media';
+import authRouter from './routes/auth';
 import {
   connectDB,
   createIndexes,
@@ -30,6 +31,7 @@ app.use(express.urlencoded({ extended: true }));
 // Routes
 app.use('/api/health', healthRouter);
 app.use('/api/media', mediaRouter);
+app.use('/api/auth', authRouter);
 
 // Root route
 app.get('/', (_req, res) => {
